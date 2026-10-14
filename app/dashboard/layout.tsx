@@ -16,7 +16,16 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { House, LogOut, MessagesSquare, Package, ReceiptText, Settings, type LucideIcon } from "lucide-react";
+import {
+  House,
+  LogOut,
+  MessagesSquare,
+  Package,
+  ReceiptText,
+  Settings,
+  Sparkles,
+  type LucideIcon,
+} from "lucide-react";
 import { browserClient } from "@/lib/supabase-browser";
 import { MerchantProvider, type DashboardMerchant } from "./merchant-context";
 import { SkeletonRows } from "./ui";
@@ -158,8 +167,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const m = merchant!;
   const isActive = (href: string) =>
     href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
-  const inChat = /^\/dashboard\/conversations\/[^/]+/.test(pathname);
-  const flush = pathname.startsWith("/dashboard/conversations");
+  // Full-screen on a phone: an open chat, and the try-it screen (which is one).
+  const inChat =
+    /^\/dashboard\/conversations\/[^/]+/.test(pathname) || pathname.startsWith("/dashboard/try");
+  const flush = pathname.startsWith("/dashboard/conversations") || pathname.startsWith("/dashboard/try");
   const badgeFor = (item: NavItem) => (item.badge ? counts[item.badge] : 0);
 
   return (
@@ -185,6 +196,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </Link>
               );
             })}
+            <Link
+              href="/dashboard/try"
+              className={`rail-link rail-try${pathname.startsWith("/dashboard/try") ? " active" : ""}`}
+              aria-current={pathname.startsWith("/dashboard/try") ? "page" : undefined}
+            >
+              <Sparkles aria-hidden />
+              Try it as a customer
+            </Link>
           </nav>
 
           <div className="rail-foot">

@@ -14,10 +14,10 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { MessagesSquare } from "lucide-react";
+import { MessagesSquare, Sparkles } from "lucide-react";
 import { browserClient } from "@/lib/supabase-browser";
 import { useMerchant } from "../merchant-context";
-import { Avatar, chatStamp, Empty, SkeletonRows } from "../ui";
+import { Avatar, chatStamp, Empty, phoneLabel, samePhone, SkeletonRows } from "../ui";
 import { InboxContext } from "./inbox-context";
 
 type Row = {
@@ -66,10 +66,16 @@ function Inbox({ children }: { children: React.ReactNode }) {
     });
     if (error) setError(error.message);
     else {
-      setRows((data ?? []) as Row[]);
+      // The owner's own number is a command line, not a customer — lib/owner.ts
+      // treats every message from it as an instruction. The webhook still logs
+      // those messages to a conversation (that row is its duplicate-delivery
+      // guard), but listing it here put the owner in their own customer inbox.
+      setRows(
+        ((data ?? []) as Row[]).filter((r) => !samePhone(r.customer_phone, merchant.escalation_number)),
+      );
       setError(null);
     }
-  }, [merchant.id, status]);
+  }, [merchant.id, merchant.escalation_number, status]);
 
   useEffect(() => {
     setRows(null);
@@ -93,6 +99,9 @@ function Inbox({ children }: { children: React.ReactNode }) {
                   : "Every conversation the assistant has had with your customers."}
               </p>
             </div>
+            <Link href="/dashboard/try" className="btn ghost small">
+              <Sparkles /> Try it
+            </Link>
           </div>
 
           <div className="chips" role="toolbar" aria-label="Filter chats">
@@ -130,7 +139,7 @@ function Inbox({ children }: { children: React.ReactNode }) {
                     <Avatar name={c.customer_name} phone={c.customer_phone} />
                     <div className="chat-body">
                       <div className="chat-top">
-                        <span className="chat-name">{c.customer_name || `+${c.customer_phone}`}</span>
+                        <span className="chat-name">{c.customer_name || phoneLabel(c.customer_phone)}</span>
                         <span className="chat-time">{chatStamp(c.last_message_at)}</span>
                       </div>
                       <div className="chat-bottom">

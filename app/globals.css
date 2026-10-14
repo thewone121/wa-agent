@@ -1364,6 +1364,180 @@ a.todo-item:active {
 }
 
 /* ---------------------------------------------------------------- */
+/* Try it as a customer                                              */
+/* ---------------------------------------------------------------- */
+
+/* Phone: the whole screen, like an open chat. */
+.try-chat {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+.try-side {
+  display: none;
+}
+
+.store-mark.round {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 15px;
+}
+
+.try-intro {
+  align-self: stretch;
+  max-width: 520px;
+  width: 100%;
+  margin: 8px auto 12px;
+  padding: 18px;
+  border-radius: 18px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.try-intro h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 21px;
+  letter-spacing: -0.02em;
+}
+
+.try-intro p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.suggest {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.suggest button {
+  justify-content: flex-start;
+  text-align: left;
+  white-space: normal;
+  line-height: 1.35;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-weight: 500;
+}
+
+.suggest button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--brand-soft) 80%, var(--brand));
+}
+
+/* Something the assistant DID, as opposed to said. */
+.event {
+  align-self: center;
+  max-width: 92%;
+  margin: 6px 0 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 500;
+  text-align: center;
+  background: var(--card);
+  color: var(--ink-2);
+  box-shadow: var(--shadow-sm);
+}
+
+.event a {
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+.event.order {
+  background: var(--good-soft);
+  color: var(--good);
+}
+
+.event.handover-event {
+  background: var(--attn-soft);
+  color: var(--attn);
+}
+
+.typing {
+  display: inline-flex;
+  gap: 4px;
+  padding: 12px 14px;
+}
+
+.typing span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+  animation: blink 1.2s infinite ease-in-out;
+}
+
+.typing span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.typing span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes blink {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+.composer {
+  flex: none;
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: var(--card);
+  border-top: 1px solid var(--line);
+}
+
+.composer input {
+  flex: 1;
+  min-height: 46px;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: var(--sunk);
+  border-color: transparent;
+}
+
+.composer button.send {
+  flex: none;
+  width: 46px;
+  min-height: 46px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.composer button.send svg {
+  width: 19px;
+  height: 19px;
+}
+
+@media (max-width: 420px) {
+  .new-customer .label {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------- */
 /* Order tickets                                                     */
 /* ---------------------------------------------------------------- */
 
@@ -2242,6 +2416,21 @@ a.todo-item:active {
     flex: 1;
   }
 
+  .try {
+    height: 100dvh;
+    display: flex;
+  }
+
+  .try-chat {
+    position: static;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .rail-try {
+    margin-top: 6px;
+  }
+
   .auth {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
@@ -2316,6 +2505,20 @@ a.todo-item:active {
 
   .thread-back {
     display: none;
+  }
+
+  /* Presenting on a laptop: the chat on the left, what it caused on the
+     right, so the room can follow without being talked through it. */
+  .try-side {
+    flex: none;
+    width: 340px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    padding: 28px 24px;
+    border-left: 1px solid var(--line);
+    background: var(--card);
+    overflow-y: auto;
   }
 }
 

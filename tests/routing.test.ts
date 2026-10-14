@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   pickModel,
   estimateCostMinor,
+  isNegotiation,
   SMART,
   FAST,
 } from "../lib/pricing";
@@ -43,6 +44,37 @@ test("catalogue nouns must never route traffic to the capable model", () => {
   // is treated as an intent signal.
   for (const word of ["platter", "pizza", "pack", "chops", "bento", "jollof"]) {
     assert.equal(pickModel(`how much be the ${word}`, 0), FAST, word);
+  }
+});
+
+test("haggling is caught in code, in Pidgin and English", () => {
+  // The exact message that slipped past the model on 2026-10-14.
+  assert.ok(isNegotiation("abeg na too much. last price for the 2? reduce am small"));
+  for (const text of [
+    "oga last price?",
+    "reduce am small na",
+    "any discount for 50 guests?",
+    "dis one too expensive",
+    "e too much abeg",
+    "is it cheaper if I buy two?",
+    "what's your best price",
+    "can we bargain",
+  ]) {
+    assert.ok(isNegotiation(text), text);
+  }
+});
+
+test("ordinary price questions are NOT treated as haggling", () => {
+  // "how much" is the most common opening there is. Matching it would hand
+  // every new customer to the owner and make the assistant pointless.
+  for (const text of [
+    "how much be the bento mini platter?",
+    "how much for 2?",
+    "what is the price of the platter",
+    "I want to order",
+    "deliver to Yaba",
+  ]) {
+    assert.ok(!isNegotiation(text), text);
   }
 });
 

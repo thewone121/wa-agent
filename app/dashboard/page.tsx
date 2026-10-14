@@ -21,6 +21,7 @@ import {
   CircleCheck,
   Hand,
   PackageX,
+  Sparkles,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
@@ -171,9 +172,18 @@ export default function HomePage() {
     <>
       {head}
 
-      <h2 className="section-title" style={{ marginTop: 4 }}>
-        Needs you
-      </h2>
+      <Link href="/dashboard/try" className="todo-item calm" style={{ marginBottom: 6 }}>
+        <span className="todo-icon">
+          <Sparkles />
+        </span>
+        <div className="todo-text">
+          <strong>Try it as a customer</strong>
+          <span>Type like a customer and watch the assistant answer from your real catalogue.</span>
+        </div>
+        <ChevronRight aria-hidden />
+      </Link>
+
+      <h2 className="section-title">Needs you</h2>
       <div className="todo">
         {todos.length === 0 ? (
           <div className="todo-item calm">

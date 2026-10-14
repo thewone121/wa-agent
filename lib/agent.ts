@@ -26,8 +26,15 @@
 import OpenAI from "openai";
 import { admin, Merchant } from "./supabase";
 import { fmtMoney, orderRef } from "./money";
-import { SMART, FAST, BASE_URL, pickModel, estimateCostMinor } from "./pricing";
+import { SMART, FAST, BASE_URL, pickModel, estimateCostMinor, isNegotiation } from "./pricing";
 import { required, optional } from "./env";
+
+/**
+ * Recorded in messages.model when a reply came from a fixed rule rather than
+ * a model. The transcript shows it, so the owner can tell the difference, and
+ * conversation_model() stickiness ignores it because it isn't SMART.
+ */
+export const RULE_MODEL = "rule";
 
 let client: OpenAI | null = null;
 function ai(): OpenAI {
@@ -343,10 +350,7 @@ async function runTool(name: string, input: any, ctx: Ctx): Promise<ToolOutcome>
   }
 
   if (name === "escalate_to_human") {
-    await db.rpc("escalate_conversation", {
-      p_conversation_id: ctx.conversationId,
-      p_reason: input.reason ?? "unspecified",
-    });
+    await handOver(ctx, input.reason ?? "unspecified");
     return {
       escalated: true,
       output: {
@@ -388,6 +392,24 @@ export async function respond(
   incoming: string,
   stickyModel?: string | null,
 ): Promise<AgentResult> {
+  /* --- haggling: decided in code, before the model sees it -----------
+     See isNegotiation in lib/pricing.ts for why this is not left to the
+     prompt. The reply is fixed so no wording can imply a discount, and it
+     costs nothing because no model is called. */
+  if (isNegotiation(incoming)) {
+    await handOver(ctx, "price negotiation");
+    return {
+      reply: "Let me get the owner to talk to you about the price — they'll reply here shortly 🙏",
+      model: RULE_MODEL,
+      promptTokens: 0,
+      outputTokens: 0,
+      cachedTokens: 0,
+      costMinor: 0,
+      escalated: true,
+      orderId: null,
+    };
+  }
+
   const catalogue = await catalogueSnapshot(ctx.merchant.id, ctx.merchant.currency);
   const model = pickModel(incoming, history.length, stickyModel);
 
@@ -404,6 +426,14 @@ export async function respond(
   let cachedTokens = 0;
   let escalated = false;
   let orderId: string | null = null;
+
+  /** Every reply that tells the customer the owner will help must make it
+      true: mute the bot on this thread and flag it for the owner. Saying it
+      without doing it left customers waiting on an owner who was never told. */
+  const handOverAndFinish = async (reply: string, reason: string): Promise<AgentResult> => {
+    if (!escalated) await handOver(ctx, reason);
+    return finish(reply, true);
+  };
 
   const finish = (reply: string, didEscalate = escalated): AgentResult => ({
     reply,
@@ -436,12 +466,16 @@ export async function respond(
     const msg = res.choices[0]?.message;
     if (!msg) {
       console.error("[agent] provider returned no choices");
-      return finish("Let me get the owner to help with that.", true);
+      return handOverAndFinish("Let me get the owner to help with that.", "the assistant got no answer");
     }
 
     const calls = msg.tool_calls ?? [];
     if (calls.length === 0) {
-      return finish(msg.content?.trim() || "Let me get the owner to help with that.");
+      const text = msg.content?.trim();
+      if (text) return finish(text);
+      // An empty answer is the model failing, not the model deciding. Seen in
+      // practice on haggling, where it should have called escalate_to_human.
+      return handOverAndFinish("Let me get the owner to help with that.", "the assistant had no answer");
     }
 
     // The assistant turn carrying the tool_calls has to go back verbatim, and
@@ -499,7 +533,16 @@ export async function respond(
   }
 
   // Ran out of hops. Hand off rather than loop again.
-  return finish("Let me get the owner to help you with this one.", true);
+  return handOverAndFinish("Let me get the owner to help you with this one.", "the assistant went round in circles");
+}
+
+/** Mutes the bot on this thread and puts it in the owner's "waiting on you". */
+async function handOver(ctx: Ctx, reason: string): Promise<void> {
+  const { error } = await admin().rpc("escalate_conversation", {
+    p_conversation_id: ctx.conversationId,
+    p_reason: reason,
+  });
+  if (error) console.error("[agent] hand-over failed", error.message);
 }
 
 export { SMART, FAST, pickModel };

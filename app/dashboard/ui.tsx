@@ -53,6 +53,38 @@ export function Avatar({
 }
 
 /* ------------------------------------------------------------------ */
+/* Phone numbers                                                       */
+/* ------------------------------------------------------------------ */
+
+/** Customers created by the "Try it" screen. See app/api/simulate. */
+export function isTestPhone(phone: string): boolean {
+  return /^000\d{9}$/.test(phone);
+}
+
+/** What to print where a phone number goes. A "+000…" number reads as broken. */
+export function phoneLabel(phone: string): string {
+  return isTestPhone(phone) ? "Try-it session" : `+${phone}`;
+}
+
+/**
+ * Same suffix rule as lib/owner.ts: Meta delivers "2348012345678", owners
+ * type "+234 801…" or "0801…". Reimplemented rather than imported because
+ * lib/owner.ts pulls in the service-role client, which must never reach the
+ * browser bundle.
+ */
+export function samePhone(a: string | null | undefined, b: string | null | undefined): boolean {
+  if (!a || !b) return false;
+  const da = a.replace(/\D/g, "");
+  const db = b.replace(/\D/g, "");
+  if (!da || !db) return false;
+  if (da === db) return true;
+
+  const n = Math.min(da.length, db.length, 10);
+  if (n < 9) return false;
+  return da.slice(-n) === db.slice(-n);
+}
+
+/* ------------------------------------------------------------------ */
 /* Status                                                              */
 /* ------------------------------------------------------------------ */
 
@@ -206,6 +238,8 @@ export function clock(iso: string): string {
  * suffix are OpenRouter plumbing, not something the owner needs to read.
  */
 export function shortModel(model: string): string {
+  // Written by lib/agent.ts when a fixed rule answered instead of a model.
+  if (model === "rule") return "rule · no AI";
   const bare = model.split("/").pop()!.split(":")[0];
   const parts = bare.split("-");
   return parts.length > 3 ? parts.slice(0, 3).join("-") : bare;

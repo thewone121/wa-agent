@@ -203,14 +203,42 @@ export function estimateCostMinor(u: Usage): number {
 /* ------------------------------------------------------------------ */
 /* Routing                                                             */
 /* ------------------------------------------------------------------ */
+/**
+ * Haggling. Matched in code, not left to the model.
+ *
+ * "Never agree a discount" is a promise made to every merchant, and a prompt
+ * instruction is not a guarantee: tested against the free model, a customer
+ * saying "last price? reduce am small" got a reply promising the owner — and
+ * no handover, so the owner never heard and the bot kept talking. A message
+ * that matches here is handed to the owner before the model is called, so it
+ * has no opportunity to name a price at all.
+ *
+ * Errs towards handing over. A false positive ("can you reduce the pepper?")
+ * costs the owner one message; a false negative costs the merchant money.
+ */
+const NEGOTIATION: RegExp[] = [
+  /\bdiscount/i,
+  /\breduce\b/i,
+  /\blast price\b/i,
+  /\bbargain/i,
+  /\btoo (much|expensive|costly|high)\b/i,
+  /\bcheaper\b/i,
+  /\bbest price\b/i,
+];
+
+export function isNegotiation(text: string): boolean {
+  return NEGOTIATION.some((re) => re.test(text));
+}
+
 // Intent signals ONLY. Never put a product name or a word from the merchant's
 // catalogue in here — those appear in nearly every message, which would route
 // all traffic to the expensive model and wipe out the margin on a ₦35k plan.
 const COMPLEX: RegExp[] = [
   // buying intent
   /\border\b/i, /\bbuy\b/i, /\bdeliver/i, /\bpay/i, /\baddress\b/i, /\bconfirm/i,
-  // negotiation — must escalate, never improvised
-  /\bdiscount/i, /\breduce\b/i, /\blast price\b/i, /\bbargain/i,
+  // negotiation — handled before the model by isNegotiation(); kept here so a
+  // message that slips past that still lands on the careful model
+  ...NEGOTIATION,
   // trouble — needs the careful model
   /\brefund/i, /\bcomplain/i, /\bwrong\b/i, /\bnever\b/i, /\bwaiting\b/i, /\bdamage/i,
   // event sizing (quantity reasoning)

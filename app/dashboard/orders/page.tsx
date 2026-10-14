@@ -18,7 +18,7 @@ import { CircleCheck, MapPin, NotebookPen, Phone, ReceiptText, Truck, User, Wall
 import { browserClient } from "@/lib/supabase-browser";
 import { useMerchant } from "../merchant-context";
 import { fmtMoney, orderRef } from "@/lib/money";
-import { chatStamp, Empty, Pill, Sheet, SkeletonRows } from "../ui";
+import { chatStamp, Empty, phoneLabel, Pill, Sheet, SkeletonRows } from "../ui";
 
 type Status = "draft" | "pending_payment" | "confirmed" | "fulfilled" | "cancelled";
 
@@ -231,7 +231,7 @@ export default function OrdersPage() {
             </div>
             <div className="fact">
               <Phone aria-hidden />
-              <span className="mono">+{open.customer_phone}</span>
+              <span className="mono">{phoneLabel(open.customer_phone)}</span>
             </div>
             {open.delivery_address && (
               <div className="fact">

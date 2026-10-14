@@ -17,7 +17,16 @@ import { Check, ChevronLeft, Hand, Play, X } from "lucide-react";
 import { browserClient } from "@/lib/supabase-browser";
 import { useMerchant } from "../../merchant-context";
 import { fmtMoney } from "@/lib/money";
-import { Avatar, clock, dayLabel, shortModel, SkeletonRows, statusLabel } from "../../ui";
+import {
+  Avatar,
+  clock,
+  dayLabel,
+  isTestPhone,
+  phoneLabel,
+  shortModel,
+  SkeletonRows,
+  statusLabel,
+} from "../../ui";
 import { useInbox } from "../inbox-context";
 
 type Msg = {
@@ -142,9 +151,10 @@ export default function ThreadPage() {
         {back}
         <Avatar name={c.customer_name} phone={c.customer_phone} small />
         <div className="thread-who">
-          <strong>{c.customer_name || `+${c.customer_phone}`}</strong>
+          <strong>{c.customer_name || phoneLabel(c.customer_phone)}</strong>
           <span>
-            {statusLabel(c.status)} · +{c.customer_phone} · {fmtMoney(spend, merchant.currency)} AI spend
+            {statusLabel(c.status)} · {phoneLabel(c.customer_phone)} · {fmtMoney(spend, merchant.currency)} AI
+            spend
           </span>
         </div>
       </header>
@@ -205,8 +215,9 @@ export default function ThreadPage() {
         <div className="thread-note">
           <Hand aria-hidden />
           <span>
-            The assistant is muted here. Reply to +{c.customer_phone} on WhatsApp yourself, then hand
-            it back.
+            {isTestPhone(c.customer_phone)
+              ? "The assistant handed this test chat to you. There's no real customer to reply to — hand it back to keep testing."
+              : `The assistant is muted here. Reply to +${c.customer_phone} on WhatsApp yourself, then hand it back.`}
           </span>
         </div>
       )}

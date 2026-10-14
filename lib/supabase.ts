@@ -89,6 +89,23 @@ export async function merchantByPhoneNumberId(
   return (data as unknown as Merchant) ?? null;
 }
 
+/**
+ * The merchant a signed-in dashboard user owns. Used by server routes that
+ * act on the owner's behalf (the try-it screen), after the user's access
+ * token has been verified — never with a user id the browser supplied.
+ */
+export async function merchantByOwner(userId: string): Promise<Merchant | null> {
+  const { data } = await admin()
+    .from("merchants")
+    .select(MERCHANT_COLS)
+    .eq("owner_id", userId)
+    .eq("is_active", true)
+    .limit(1)
+    .maybeSingle();
+
+  return (data as unknown as Merchant) ?? null;
+}
+
 /* ------------------------------------------------------------------ */
 /* Idempotency                                                         */
 /* ------------------------------------------------------------------ */

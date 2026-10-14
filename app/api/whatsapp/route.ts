@@ -26,23 +26,18 @@ import {
   claimInbound,
   logMessage,
   markSendFailed,
-  recentTurns,
-  conversationModel,
-  recentInboundCount,
   conversationStatus,
   orderSummary,
   markOrderNotified,
-  bumpUsage,
   Merchant,
 } from "@/lib/supabase";
-import { respond } from "@/lib/agent";
+import { customerTurn } from "@/lib/turn";
 import {
   isOwner,
   handleOwnerCommand,
   formatOrderNotification,
   formatHandoverNotification,
 } from "@/lib/owner";
-import { THROTTLE_MAX_REPLIES, THROTTLE_WINDOW_SECONDS } from "@/lib/env";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -177,56 +172,21 @@ async function handle(msg: InboundMessage) {
     return;
   }
 
-  /* --- abuse throttle ------------------------------------------------
-     Every reply past this point costs Anthropic tokens and a Meta service
-     message. Nothing else bounds that: one script pointed at the number
-     could drain the balance in minutes. The customer gets told once, and
-     the check is in Postgres because serverless instances share no memory. */
-  const recent = await recentInboundCount(conversationId, THROTTLE_WINDOW_SECONDS);
-  if (recent > THROTTLE_MAX_REPLIES) {
-    if (recent === THROTTLE_MAX_REPLIES + 1) {
-      await deliver(
-        merchant,
-        msg.from,
-        conversationId,
-        "You're sending faster than I can keep up 😅 Give me a moment and send it again.",
-      );
-    }
-    return;
-  }
-
-  const [history, sticky] = await Promise.all([
-    recentTurns(conversationId, { excludeWaMessageId: msg.waMessageId }),
-    conversationModel(conversationId),
-  ]);
-
-  const result = await respond(
-    { merchant, customerId, conversationId },
-    history,
-    msg.text,
-    sticky,
-  );
-
-  await deliver(merchant, msg.from, conversationId, result.reply, {
-    model: result.model,
-    // prompt_tokens from the provider INCLUDES the cached ones; the column
-    // kept its old name so the dashboard query did not have to change.
-    input_tokens: result.promptTokens,
-    output_tokens: result.outputTokens,
-    cached_tokens: result.cachedTokens,
-    // Kimi and Qwen do not bill a separate cache WRITE, so there is nothing to
-    // record here. The column stays for rows written by the Anthropic client.
-    cache_write_tokens: null,
-    cost_minor: result.costMinor,
+  /* --- the turn itself ----------------------------------------------
+     Throttle, history, the model, cost accounting — shared with the
+     dashboard's try-it screen through lib/turn.ts, so that screen is the
+     real thing rather than a copy. */
+  const outcome = await customerTurn({
+    merchant,
+    customerId,
+    conversationId,
+    text: msg.text,
+    excludeWaMessageId: msg.waMessageId,
+    countsAsServiceMessage: true,
+    send: (body, usage) => deliver(merchant, msg.from, conversationId, body, usage),
   });
-
-  // Cost tracking — feeds the 1,500-reply cap and your margin view.
-  const usage = await bumpUsage({
-    merchantId: merchant.id,
-    aiReplies: 1,
-    serviceMessages: 1,
-    costMinor: result.costMinor,
-  });
+  if (outcome.kind !== "replied") return;
+  const { result, usage } = outcome;
 
   /* --- owner notifications ------------------------------------------
      Best-effort, and deliberately after the customer has been answered.
